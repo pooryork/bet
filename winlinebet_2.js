@@ -2,7 +2,8 @@
 /// <reference path="jq.js" />
 
 var myScope = new Object();
-(function() {
+var lastBalanceIn = 0;
+(function () {
     'use strict';
     var current = 0;
     var maxError = 10;
@@ -11,18 +12,24 @@ var myScope = new Object();
 
     setInterval(closePopUp, 500);
 
-    document.addEventListener('DOMContentLoaded',
-        function() {
-            console.log('Начали');
-            if (worker.IsShowStake) {
-                //showStakeAsync();
-                setTimeout(showStake, 1000);
-            } else {
-                loginRu();
-            }
 
-        });
+    function initBrowser() {
+        worker.Helper.WriteLine('Начали');
+        if (worker.IsShowStake) {
+            //showStakeAsync();
+            worker.Helper.WriteLine('Открываем купон');
+            setTimeout(showStake, 1000);
+        } else {
+            loginRu();
+        }
 
+    }
+
+    if (document.readyState !== 'loading') {
+        initBrowser();
+    } else {
+        document.addEventListener('DOMContentLoaded', initBrowser);
+    }
 
     let loginTry = 0;
 
@@ -34,12 +41,12 @@ var myScope = new Object();
                 throw -1;
             }
 
-            jQuery.expr[":"].Contains = jQuery.expr.createPseudo(function(arg) {
-                return function(elem) {
+            jQuery.expr[":"].Contains = jQuery.expr.createPseudo(function (arg) {
+                return function (elem) {
                     return jQuery(elem)
-                        .text()
-                        .toUpperCase()
-                        .indexOf(arg.toUpperCase()) >=
+                            .text()
+                            .toUpperCase()
+                            .indexOf(arg.toUpperCase()) >=
                         0;
                 };
             });
@@ -83,7 +90,7 @@ var myScope = new Object();
             if (typeof (Function) === typeof (window.jQuery))
                 return true;
             return false;
-        },200,100);
+        }, 200, 100);
 
         if (!isLoadJq) {
             worker.Helper.WriteLine('Jq так и не загружен');
@@ -93,7 +100,7 @@ var myScope = new Object();
         }
 
         let isLoadLiveLine = await asyncCallbackHot(() => {
-            return document.querySelectorAll('div.statistic__wrapper').length!==0;
+            return document.querySelectorAll('div.statistic__wrapper').length !== 0;
         });
 
         if (!isLoadLiveLine) {
@@ -139,7 +146,7 @@ var myScope = new Object();
                     return true;
                 return false;
             });
-            
+
             updateBalanceAndLogin();
             return;
         }
@@ -172,7 +179,7 @@ var myScope = new Object();
         let passwordInput = document.querySelector('input[name="passw"]');
 
         loginInput.value = worker.Login;
-        fireEvent(loginInput,'input');
+        fireEvent(loginInput, 'input');
 
         passwordInput.value = worker.Password;
         fireEvent(passwordInput, 'input');
@@ -213,11 +220,11 @@ var myScope = new Object();
     }
 
     function showStake() {
-        setTimeout(function() {
+        setTimeout(function () {
                 console.log('there is 0');
                 scrollDown();
             },
-            1500);
+            1000);
     }
 
     async function showStakeAsync() {
@@ -267,7 +274,7 @@ var myScope = new Object();
             dt = [dt[0], dt[2].split(' ')[1], (dt[2].substring(0, 2) === 'м ' ? 'Меньше' : (dt[2].substring(0, 2) === 'б ' ? 'Больше' : dt[2]))];
         }
         if (dt.length !== 3) {
-            throw new 'Данные для открытия не корректны';
+            throw 'Данные для открытия не корректны';
         }
 
         if (dt[1] !== '') {
@@ -291,7 +298,7 @@ var myScope = new Object();
             console.log(a2);
 
             if (!isFinding)
-                throw new 'не нашли ставку';
+                throw 'не нашли ставку';
         } else {
             let element = null;
             let isFindingElement = await asyncCallbackHot(() => {
@@ -302,7 +309,7 @@ var myScope = new Object();
             });
 
             if (!element || !isFindingElement) {
-                throw new 'не нашли ставку';
+                throw 'не нашли ставку';
             }
 
             element.get()[0].parentNode.click();
@@ -323,22 +330,26 @@ var myScope = new Object();
         closePopUp();
         var sel = window.unescape(worker.BetId).split('_');
         console.dir(sel);
-        if (jQuery("[data-ng-bind*='market.name']").length !== 0) {
+        if (jQuery(".result-table__header").length !== 0) {
             console.log('there is 2');
             window.scrollBy(0, 300);
-            setTimeout(function() {
-                    var a = $(":contains('" + sel[0] + "')[data-ng-bind*='market.name']");
+            setTimeout(function () {
+                    // var a = $(":contains('" + sel[0] + "')[data-ng-bind*='market.name']");
+                    var a = $(".result-table__header:contains('" + sel[0] + "')");
                     console.log(a);
                     if (a.length !== 0) {
+                        worker.Helper.WriteLine('Нашли купон');
                         a[0].parentNode.scrollIntoView();
+
                         doBet();
                     } else {
+                        worker.Helper.WriteLine('Ищем купон');
                         scrollDown();
                     }
                 },
                 400);
         } else {
-            setTimeout(function() {
+            setTimeout(function () {
                     scrollDown();
                 },
                 400);
@@ -353,10 +364,15 @@ var myScope = new Object();
         var betDataType = betDataArray[1]; //Больше/меньше
         var betDataCoef = betDataArray[2]; //Кэф и б/м - текст
 
-        var a1 = $(":contains('" + betDataGroupTitle + "')[data-ng-bind*='market.name']").get()[0];
+        // var a1 = $(":contains('" + betDataGroupTitle + "')[data-ng-bind*='market.name']").get()[0];
+        var a1 = $(".result-table__header:contains('" + betDataGroupTitle + "')").get()[0];
         console.log('a1=');
         console.log(a1);
-        var betGroupe = a1.parentNode.parentNode;
+
+
+
+        var betGroupe = a1.parentNode;
+        // var betGroupe = a1.parentNode.parentNode;
         var title = '::col.text';
         var title2 = '::col.text';
 
@@ -366,21 +382,27 @@ var myScope = new Object();
             var a3;
             if (betDataType !== '') {
                 //Если фора или тотал
-                var a2 = $(betGroupe).find(":contains('" + betDataType + "')[data-ng-bind *= '" + title + "']");
+                var a2 = $(betGroupe).find(".result-table__row:contains('" + betDataType + "')");
+                // var a2 = $(betGroupe).find(":contains('" + betDataType + "')[data-ng-bind *= '" + title + "']");
                 if (a2.length !== 0) {
                     for (var c = 0; c < a2.length; c++) {
                         console.log(a2.get()[c]);
 
-                        var h2 = a2.get()[c].parentNode.parentNode.parentNode;
-                        a3 = $(h2).find(":contains('" +
+                        var h2 = a2.get()[c];
+                        // var h2 = a2.get()[c].parentNode.parentNode.parentNode;
+                        a3 = $(h2).find(".result-table__td:contains('" +
                             betDataCoef.replace('-', '−') +
-                            "')[data-ng-bind *= '" +
-                            title2 +
-                            "']");
+                            "')");
+                        // a3 = $(h2).find(":contains('" +
+                        //     betDataCoef.replace('-', '−') +
+                        //     "')[data-ng-bind *= '" +
+                        //     title2 +
+                        //     "']");
                         console.log(a3);
                         if (a3.length !== 0) {
                             console.log('1');
-                            currentNode = a3.get()[0].parentNode;
+                            currentNode = a3.get()[0];
+                            // currentNode = a3.get()[0].parentNode;
                             if (currentNode.classList.contains('locked')) {
                                 closePopUp();
                                 worker.JSStop();
@@ -398,7 +420,10 @@ var myScope = new Object();
             } else {
                 console.log('betDataType????'); //когда это происходит?
                 a3 = $(betGroupe)
-                    .find(":contains('" + betDataCoef.replace('-', '−') + "')[data-ng-bind *= '" + title2 + "']");
+                    .find(".result-table__td:contains('" + betDataCoef.replace('-', '−') + "')");
+
+                // a3 = $(betGroupe)
+                //     .find(":contains('" + betDataCoef.replace('-', '−') + "')[data-ng-bind *= '" + title2 + "']");
                 console.log(a3);
                 if (a3.length !== 0) {
                     console.log('1');
@@ -415,17 +440,19 @@ var myScope = new Object();
             if (current >= maxError) {
                 worker.JSFail();
             } else {
-                setTimeout(function() {
+                setTimeout(function () {
                         doBet();
                     },
                     1000);
             }
 
         } else {
-            setTimeout(function() {
+            setTimeout(function () {
                     if (angular.element(document.querySelectorAll('div[data-coupon]')[0]).scope()) {
                         var scope = angular.element(document.querySelectorAll('div[data-coupon]')[0]).scope();
-                        scope.$apply(function() { scope.coupon.page = "main" });
+                        scope.$apply(function () {
+                            scope.coupon.page = "main"
+                        });
                     }
 
                     if (angular.element(document.querySelectorAll('[data-translate="coupon.ORDINAR"]')[0]).scope())
@@ -445,7 +472,7 @@ var myScope = new Object();
                         angular.element(document.querySelectorAll("button.coupon-bet__btn.ng-scope")[0]).scope()
                             .setMax();
 
-                    setTimeout(function() {
+                    setTimeout(function () {
                             if (getStakeCount() === 1) {
 
 
@@ -638,7 +665,7 @@ var myScope = new Object();
     function getMinimalStake() {
         try {
             if (angular.element(document.querySelectorAll('[data-translate="lgnf.BALANCE_SC"]')[0]).scope().user
-                .currency ===
+                    .currency ===
                 1)
                 return 50;
             return 1; //Для остальных валют
@@ -679,9 +706,51 @@ var myScope = new Object();
     var reloginTry = 0;
 
     /**
-    * Возращает true - если нажали на кнопку "Поставить"
-    * @return {boolean} true - если нажали на кнопку "Поставить"
-    */
+     * Возращает true - если нажали на кнопку "Поставить"
+     * @return {boolean} true - если нажали на кнопку "Поставить"
+     */
+    function getLastBetId() {
+        var betid = 0;
+        let betHistory = apiWlb.client.user.betHistory;
+        // worker.Helper.WriteLine('колво купонов ' + betHistory.length.toString());
+        if (betHistory === undefined) {
+            return 0;
+        }
+        for (var i = 0; i < betHistory.length; i++) {
+            let betHistoryElement = betHistory[i];
+            if (betHistoryElement.state === 0) {
+                betid = Math.max(betid, betHistoryElement.idStavka);
+            }
+        }
+        return betid;
+    }
+
+    function getBalanceIn() {
+        try {
+            return parseFloat(apiWlb.client.user.balance.in);
+        } catch (e) {
+            console.log('Ошибка парсинга баланса: ' + e);
+            return -1;
+        }
+    }
+
+    function getCouponCount() {
+        let $coupon = $(".coupon-tabs__number");
+        if ($coupon === undefined) {
+            return 0;
+        }
+        var txt = $coupon.text();
+        if (txt === undefined || txt.length === 0) {
+            return 0;
+        }
+        try {
+            return parseInt(txt)
+        } catch (e) {
+            worker.Helper.WriteLine('Ошибка получения количества купонов');
+            return -1;
+        }
+    }
+
     function doStake() {
         if (!checkLogin() && reloginTry === 0) {
             worker.Helper.WriteLine('Нет авторизации. Авторизуемся');
@@ -692,6 +761,7 @@ var myScope = new Object();
         if (document.querySelectorAll('img.pop-up-freebet')[0]) {
             if (!document.querySelectorAll('img.pop-up-freebet')[0].previousSibling) {
                 worker.Helper.WriteLine('Нет кнопки зарытия бесплатной ставки!');
+                return false;
             }
             worker.Helper.WriteLine('Закрываем окно бесплатной ставки!');
             document.querySelectorAll('img.pop-up-freebet')[0].previousSibling.click();
@@ -755,6 +825,11 @@ var myScope = new Object();
             return false;
         }
         checkCounter = 0;
+        // couponsCount = getCouponCount();
+        // lastBetId = getLastBetId();
+        // lastBalanceIn = getBalanceIn();
+        // worker.Helper.WriteLine('Последий id купона ' + lastBetId.toString());
+        // worker.Helper.WriteLine('Последий баланс ' + lastBalanceIn.toString());
         document.querySelectorAll('a.button__block')[0].click();
         return true;
         /*
@@ -779,9 +854,15 @@ var myScope = new Object();
             rez = true;
             checkCounter++;
         }
-
-        worker.Helper.WriteLine("Ставка еще ставиться? " + rez);
-        return rez;
+        var res = false;
+        if (rez) {
+            res = true;
+        } else {
+            var hasmodal = ($('.g-popup-header:contains("Купон не принят")').length === 1) || ($('h1:contains("Купон принят")').length === 1) || ($('h1:contains("Купон обработан")').length === 1) || ($('div:contains("Купон обработан")').length === 1)
+            res = !hasmodal;
+        }
+        worker.Helper.WriteLine("Ставка еще ставиться? " + res);
+        return res;
 
         //coupon-total__control
 
@@ -792,15 +873,49 @@ var myScope = new Object();
      * Проверка. Ставка принята?
      * @return {boolean} Ставка принята?
      */
+    // function checkBetIdIncreased() {
+    //     let betid = getLastBetId();
+    //     return betid > lastBetId;
+    //
+    // }
+    function lastBalanceIncreased() {
+        let balancein = getBalanceIn();
+        return balancein >= 0 && lastBalanceIn >= 0 && balancein > lastBalanceIn;
+
+    }
+
+    function checkModalShowed() {
+        if ($('.g-popup-header:contains("Купон не принят")').length === 1) {
+            return false;
+        }
+        return ($('h1:contains("Купон принят")').length === 1);
+        // return ($('h1:contains("Купон обработан")').length === 1 ||
+        //     $('h1:contains("Купон принят")').length === 1);
+
+    }
+
     function checkStakeStatus() {
         if (document.querySelector('[data-ng-show="buttonCancel"]') &&
             document.querySelector('[data-ng-show="buttonCancel"]').getBoundingClientRect().width !== 0) {
             worker.Helper.WriteLine('Окно с изменениями!');
             return false;
         }
-        var rez = ($('h1:contains("Купон обработан")').length === 1 ||
-            $('h1:contains("Купон принят")').length === 1);
-        worker.Helper.WriteLine('Ставка принята: ' + rez);
+        // var bincreased = asyncCallbackLong(lastBalanceIncreased, 50, 10);
+        // if (bincreased && lastBalanceIncreased()) {
+        //     worker.Helper.WriteLine('Баланс изменился на ' + getBalanceIn().toString());
+        //     worker.Helper.WriteLine('Ставка принята: да (б)');
+        //     return true;
+        // }
+        // worker.Helper.WriteLine('Баланс остался ' + getBalanceIn().toString());
+        //
+        // var modalwhowed = asyncCallbackLong(checkModalShowed, 100, 30);
+        // if (modalwhowed && checkModalShowed()) {
+        //     worker.Helper.WriteLine('Ставка принята: да (о)');
+        //     return true;
+        // }
+        var rez = checkModalShowed();
+        worker.Helper.WriteLine('Ставка принята: ' + rez.toString());
+        // worker.Helper.WriteLine('msgs: ' + $('h1:contains("Купон принят")').length.toString());
         return rez;
         //Купон обработан
         //Купон принят  coupon.MESSAGES.22.TITLE
@@ -811,12 +926,58 @@ var myScope = new Object();
     myScope.ShowStake = showStake;
 
 
-    async function sleep(msec) { return new Promise(resolve => setTimeout(resolve, msec)); }
-    async function asyncCallback(callbackBoolean) { var tryCounter = 0; while (tryCounter < 10) { if (callbackBoolean()) { return true; } tryCounter++; await sleep(1000); } return false; }
-    async function asyncCallbackLong(callbackBoolean, sleepTime, tryCount) { var tryCounter = 0; while (tryCounter < tryCount) { if (callbackBoolean()) { return true; } tryCounter++; await sleep(sleepTime); } return false; }
-    async function asyncCallbackHot(callbackBoolean) { return await asyncCallbackLong(callbackBoolean, 200, 50); }
-    function isInView(element) { if (!element) return false;
-        if (!element.getBoundingClientRect()) return false; return element.getBoundingClientRect().width !== 0; }
+    async function sleep(msec) {
+        return new Promise(resolve => setTimeout(resolve, msec));
+    }
+
+    async function asyncCallback(callbackBoolean) {
+        var tryCounter = 0;
+        while (tryCounter < 10) {
+            if (callbackBoolean()) {
+                return true;
+            }
+            tryCounter++;
+            await sleep(1000);
+        }
+        return false;
+    }
+
+    async function asyncCallbackLong(callbackBoolean, sleepTime, tryCount) {
+        var tryCounter = 0;
+        while (tryCounter < tryCount) {
+            if (callbackBoolean()) {
+                return true;
+            }
+            tryCounter++;
+            await sleep(sleepTime);
+        }
+        return false;
+    }
+
+    function makeCallback(callbackBoolean, callbackreturn, sleepTime, counter, maxcount) {
+        if (callbackBoolean()) {
+            callbackreturn(true)
+        } else {
+            if (counter <= maxcount) {
+                setTimeout(function () {
+                    makeCallback(callbackBoolean, callbackreturn, sleepTime, counter + 1, maxcount)
+                }, sleepTime);
+            } else {
+                callbackreturn(false);
+            }
+        }
+    }
+
+
+    async function asyncCallbackHot(callbackBoolean) {
+        return await asyncCallbackLong(callbackBoolean, 200, 50);
+    }
+
+    function isInView(element) {
+        if (!element) return false;
+        if (!element.getBoundingClientRect()) return false;
+        return element.getBoundingClientRect().width !== 0;
+    }
 
 })();
 
